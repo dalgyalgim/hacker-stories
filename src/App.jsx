@@ -28,30 +28,43 @@ const initialStories = [
     },
 ];
 
+const getAsyncStories = () => new Promise(
+    (resolve) => 
+        setTimeout(() => 
+            resolve({ data: { stories: initialStories } }), 2000)
+    );
+
+const storiesReducer = (state, action) => {
+    if (action.type === "SET_STORIES") {return action.payload;}
+    else if (action.type === "REMOVE_STORY") {
+        return state.filter((story) => action.payload.objectID !== story.objectID);
+    }
+    else {throw new Error();}
+}
+
 const App = () => {
     const [searchTerm, setSearchTerm] = useStorageState('search', ''); 
-    const [stories, setStories] = React.useState([]);
+    const [stories, dispatchStories] = React.useReducer(storiesReducer, []);
     const [searchedStories, setSearchedStories] = React.useState([]);
     const [isLoading, setLoading] = React.useState(false);
-
-    const getAsyncStories = () => new Promise(
-        (resolve) => 
-            setTimeout(() => 
-                resolve({ data: { stories: initialStories } }), 2000)
-        );
 
     React.useEffect(() => {
         setLoading(true);
 
         getAsyncStories().then((result) => {
-            setStories(result.data.stories);
+            dispatchStories({
+                type : 'SET_STORIES',
+                payload: result.data.stories,
+            });
             setLoading(false);
         });
     }, []);
 
     const handleRemoveStory = (item) => {
-        const newStories = stories.filter((story) => item.objectID !== story.objectID);
-        setStories(newStories);
+        dispatchStories({
+            type :"REMOVE_STORY",
+            payload: item,
+        });
     };
 
     const handleSearch = (event) => {
