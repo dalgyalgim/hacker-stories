@@ -29,24 +29,45 @@ const initialStories = [
 ];
 
 const App = () => {
-    const [searchTerm, setSearchTerm] = useStorageState('search', 'React'); 
-    const [stories, setStories] = React.useState(initialStories);
+    const [searchTerm, setSearchTerm] = useStorageState('search', ''); 
+    const [stories, setStories] = React.useState([]);
+    const [searchedStories, setSearchedStories] = React.useState([]);
+    const [isLoading, setLoading] = React.useState(false);
+
+    const getAsyncStories = () => new Promise(
+        (resolve) => 
+            setTimeout(() => 
+                resolve({ data: { stories: initialStories } }), 2000)
+        );
+
+    React.useEffect(() => {
+        setLoading(true);
+
+        getAsyncStories().then((result) => {
+            setStories(result.data.stories);
+            setLoading(false);
+        });
+    }, []);
 
     const handleRemoveStory = (item) => {
         const newStories = stories.filter((story) => item.objectID !== story.objectID);
         setStories(newStories);
-    }
+    };
 
     const handleSearch = (event) => {
         setSearchTerm(event.target.value);
     };
 
+    React.useEffect(() => {
+        setSearchedStories(stories.filter((story) => story.title.toLowerCase().includes(searchTerm.toLowerCase())));
+    }, [stories, searchTerm]);
+        
     return (
         <div>
             <h1>My Hacker Stories</h1>
             <InputWithLabel id="search" label="Search" value={searchTerm} onInputChange={handleSearch}/>
             <hr/>
-            <List list={stories} searchTerm={searchTerm} onRemoveItem={handleRemoveStory}/>
+            {isLoading ? <p>Loading...</p> : <List list={searchedStories} searchTerm={searchTerm} onRemoveItem={handleRemoveStory}/>}
         </div>
     );
 }
@@ -57,8 +78,6 @@ const List = ({list, onRemoveItem}) => (
 );
 
 const Item = ({item, onRemoveItem})  => {
-    const handleRemoveItem = () => {onRemoveItem(item);}
-
     return (
     <li>
         <span>
@@ -68,7 +87,7 @@ const Item = ({item, onRemoveItem})  => {
         <span>{item.num_comments}</span>
         <span>{item.points}</span>
         <span>
-            <button type="button" onClick={handleRemoveItem}>Dismiss</button>
+            <button type="button" onClick={() => onRemoveItem(item)}>Dismiss</button>
         </span>
     </li>
     );
@@ -76,7 +95,7 @@ const Item = ({item, onRemoveItem})  => {
 
 const InputWithLabel = ({id, label, value, type = "text", onInputChange}) => (
     <>
-        <label htmlFor={id}>{label}</label>
+        <label htmlFor={id}>{label}: </label>
         <input id={id} type={type} value={value} onChange={onInputChange}></input>
         <p>Searching for <strong>{value}.</strong></p>
     </>
