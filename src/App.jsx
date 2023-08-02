@@ -35,29 +35,49 @@ const getAsyncStories = () => new Promise(
     );
 
 const storiesReducer = (state, action) => {
-    if (action.type === "SET_STORIES") {return action.payload;}
-    else if (action.type === "REMOVE_STORY") {
-        return state.filter((story) => action.payload.objectID !== story.objectID);
+    switch(action.type) {
+        case 'STORIES_FETCH_INIT':
+            return {
+                ...state,
+                isLoading: true,
+                isError: false,
+            };
+        case 'STORIES_FETCH_SUCCESS':
+            return {
+                ...state,
+                data: action.payload,
+                isLoading: false,
+                isError: false,
+            };
+        case 'STORIES_FETCH_FAILURE':
+            return {
+                ...state,
+                isLoading: false,
+                isError: true
+            };
+        case 'REMOVE_STORY':
+            return {
+                ...state,
+                data : state.data.filter((story) => action.payload.objectID != story.objectID)
+            };
+        default:
+            throw new Error();
     }
-    else {throw new Error();}
-}
+};
 
 const App = () => {
     const [searchTerm, setSearchTerm] = useStorageState('search', ''); 
-    const [stories, dispatchStories] = React.useReducer(storiesReducer, []);
-    const [searchedStories, setSearchedStories] = React.useState([]);
-    const [isLoading, setLoading] = React.useState(false);
+    const [stories, dispatchStories] = React.useReducer(storiesReducer, {data: [], isLoading : false, IsError: false});
 
     React.useEffect(() => {
-        setLoading(true);
+        dispatchStories({type: "STORIES_FETCH_INIT"});
 
         getAsyncStories().then((result) => {
             dispatchStories({
-                type : 'SET_STORIES',
+                type : 'STORIES_FETCH_SUCCESS',
                 payload: result.data.stories,
             });
-            setLoading(false);
-        });
+        }).catch(() => dispatchStories({type : "STORIES_FETCH_FAILURE"}));
     }, []);
 
     const handleRemoveStory = (item) => {
@@ -70,17 +90,16 @@ const App = () => {
     const handleSearch = (event) => {
         setSearchTerm(event.target.value);
     };
+    
 
-    React.useEffect(() => {
-        setSearchedStories(stories.filter((story) => story.title.toLowerCase().includes(searchTerm.toLowerCase())));
-    }, [stories, searchTerm]);
+    const searchedStories = stories.data.filter((story) => story.title.toLowerCase().includes(searchTerm.toLowerCase()));
         
     return (
         <div>
             <h1>My Hacker Stories</h1>
             <InputWithLabel id="search" label="Search" value={searchTerm} onInputChange={handleSearch}/>
             <hr/>
-            {isLoading ? <p>Loading...</p> : <List list={searchedStories} searchTerm={searchTerm} onRemoveItem={handleRemoveStory}/>}
+            {stories.isLoading ? <p>Loading...</p> : <List list={stories.data} searchTerm={searchTerm} onRemoveItem={handleRemoveStory}/>}
         </div>
     );
 }
